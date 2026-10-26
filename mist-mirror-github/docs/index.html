@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f5f4ef"><meta name="description" content="一面会呼吸的镜子。轻轻哈气，让雾凝结；抬起指尖，在雾里写下此刻。">
+  <title>雾镜 MIST · 让呼吸留下痕迹</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='20' fill='%2332473c'/%3E%3Cpath d='M17 24h30M12 32h32M20 40h28' stroke='%23f5f4ef' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-mist" viewBox="0 0 24 24"><path d="M5 7h14M2 12h16M7 17h15"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M8 5l1-2h6l1 2h4a1 1 0 0 1 1 1v13H3V6a1 1 0 0 1 1-1z"/><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8h12a3 3 0 1 0-3-3M2 12h17a3 3 0 1 1-3 3M5 16h4a2 2 0 1 1-2 2"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M14 5l5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 12V4a2 2 0 0 1 4 0v7-3a2 2 0 0 1 4 0v4-2a2 2 0 0 1 4 0v6a6 6 0 0 1-6 6h-2c-2 0-3-1-4-2l-5-7a2 2 0 0 1 3-2z"/></symbol>
+    <symbol id="i-pinch" viewBox="0 0 24 24"><path d="M10 15V7a2 2 0 0 1 4 0v6l2-3a2 2 0 0 1 3 2l-3 7a5 5 0 0 1-8 1l-5-5a2 2 0 0 1 3-3l4 3"/><path d="M4 5l2 2m12-4-1 3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 10a8 8 0 1 0 0 6M20 4v6h-6"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M9 3H3v6m12-6h6v6M3 15v6h6m12-6v6h-6"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M6 18L18 6"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3C5 1 1 9 5 16s17 5 15-13zM4 21l12-14"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8 4v16M16 4v16"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l14 8-14 8z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6zM8 12l3 3 5-6"/></symbol>
+  </defs></svg>
+  <header class="header">
+    <a class="brand" href="./" aria-label="雾镜首页"><span class="brand-symbol"><svg><use href="#i-mist"/></svg></span><strong>雾镜<span class="brand-en">MIST</span></strong></a>
+    <span class="header-note">A LITTLE ROOM TO BREATHE</span>
+    <button class="quiet help-btn" id="helpBtn"><span class="question">?</span> 使用指南</button>
+  </header>
+  <main>
+    <section class="intro"><div><div class="eyebrow"><span></span> A MOMENT, ON GLASS</div><h1>让呼吸，<em>留下痕迹。</em></h1><p>轻轻哈气，让雾凝结。抬起指尖，写下此刻。</p></div><div class="intro-aside"><svg><use href="#i-leaf"/></svg><span>不必写得完美<br>片刻的心情，就很好</span></div></section>
+    <div class="workspace">
+      <section class="mirror-section" aria-label="雾镜画面">
+        <div class="mirror" id="mirror">
+          <video id="video" autoplay muted playsinline hidden></video>
+          <canvas id="scene" aria-label="雾镜画布，可用鼠标或触屏按住拖动擦雾写字"></canvas>
+          <div class="mirror-top"><span class="pill" id="modeBadge"><i></i><span>预览 · 尚未开启摄像头</span></span><div class="mirror-top-right"><span class="mirror-tag">MIRROR 01</span><button id="fullBtn" class="icon-btn glass" title="全屏显示" aria-label="全屏显示"><svg><use href="#i-expand"/></svg></button></div></div>
+          <div id="welcome" class="welcome"><div class="welcome-copy"><span>YOUR BREATH. YOUR CANVAS.</span><h2>一面会呼吸的镜子</h2><p>借一点雾气，写一点心情。</p></div><div class="welcome-actions"><button class="btn btn-light" id="startBtn"><svg><use href="#i-camera"/></svg> 开启雾镜 <svg class="arrow"><use href="#i-arrow"/></svg></button><button class="demo-link" id="demoBtn">先体验一下 <span>↗</span></button></div><small>开启时请求摄像头与麦克风权限 · 画面仅在本机处理</small></div>
+          <div class="stage-hint hidden" id="stageHint"><svg><use href="#i-hand"/></svg><span id="gestureStatus">按住画面，拖动写字</span></div>
+          <div class="mirror-bottom"><span class="record-mark"><i></i> <span id="sourceLabel">INTERACTIVE PREVIEW</span></span><span id="mirrorStatus">一点呼吸，一点浪漫</span></div>
+          <div class="flash" id="flash"></div>
+        </div>
+        <div class="mirror-toolbar"><div class="toolbar-left"><button class="tool-btn" id="resetBtn" title="擦除所有笔迹，重新覆雾"><svg><use href="#i-refresh"/></svg><span>重新起雾</span></button><span class="divider"></span><button class="tool-btn" id="clearBtn"><svg><use href="#i-mist"/></svg><span>清透镜面</span></button></div><div class="toolbar-right"><button class="icon-btn" id="pauseBtn" title="暂停写字" aria-label="暂停写字" aria-pressed="false"><svg><use href="#i-pause"/></svg></button><button class="shutter" id="photoBtn"><svg><use href="#i-camera"/></svg><span>拍下此刻</span></button></div></div>
+        <div class="below-mirror"><span><i class="tiny-dot"></i><span id="sessionState">准备好，把此刻留在雾里</span></span><button id="cameraBtn" class="text-btn">开启摄像头 ↗</button></div>
+      </section>
+      <aside class="controls" aria-label="雾镜控制台">
+        <div class="panel-title"><h2>镜面实验室</h2><span>MAKE IT YOURS</span></div>
+        <section class="control-block breath-block"><div class="control-heading"><h3><svg><use href="#i-wind"/></svg> 呼吸感应</h3><button class="mini-chip" id="micBtn">开启麦克风</button></div><div class="breath-visual"><div id="breathBars" class="bars" aria-hidden="true"></div><div class="meter-caption"><span id="breathLabel">等待你的第一口呼吸</span><span class="mono" id="breathValue">0<span>%</span></span></div></div><label class="slider-label" for="sensitivity"><span>感应灵敏度</span><output id="sensitivityValue">适中</output></label><input type="range" id="sensitivity" min="0" max="100" value="55"><div class="range-labels"><span>轻轻吹</span><span>更灵敏</span></div><p class="control-note">靠近麦克风轻轻哈气，声音越强，雾气越浓。</p><button id="calibrateBtn" class="text-btn calibrate">校准环境声音 <span>↗</span></button></section>
+        <section class="control-block"><div class="control-heading"><h3><svg><use href="#i-pen"/></svg> 指尖画笔</h3><span class="tiny-label" id="handStatus">等待开启</span></div><div class="brush-row"><div class="brush-preview"><i id="brushDot"></i></div><div class="brush-setting"><label class="slider-label" for="brushSize"><span>笔画粗细</span><output id="brushValue">24 px</output></label><input type="range" id="brushSize" min="6" max="72" value="24" step="1"></div></div><div class="brush-presets" aria-label="画笔预设"><button data-size="10">细笔</button><button data-size="24" class="active">适中</button><button data-size="50">宽笔</button></div><p class="gesture-note"><svg><use href="#i-pinch"/></svg><span>食指写字 · 双指捏合抬笔</span></p></section>
+        <section class="control-block fog-block"><div class="control-heading"><h3><svg><use href="#i-mist"/></svg> 雾气氛围</h3><output class="tiny-label" id="fogValue">72%</output></div><input type="range" id="fogLevel" min="0" max="100" value="72" aria-label="雾气浓度"><div class="range-labels"><span>清透</span><span>朦胧</span></div><div class="switch-row"><label for="evaporate">自然消散<span>让笔迹，慢慢回到空气里</span></label><input class="switch" type="checkbox" id="evaporate" checked></div><button id="breatheBtn" class="breathe-btn"><svg><use href="#i-wind"/></svg> 按住，模拟一口呼吸 <span>↗</span></button></section>
+        <div class="privacy-note"><svg><use href="#i-shield"/></svg><span>你的画面与声音，只留在你的设备。</span></div>
+      </aside>
+    </div>
+    <section class="how-it-works" aria-label="操作步骤"><div class="step"><span class="step-number">01</span><svg><use href="#i-wind"/></svg><div><h3>呼一口气</h3><p>轻重之间，雾气渐渐浮现</p></div></div><div class="step"><span class="step-number">02</span><svg><use href="#i-hand"/></svg><div><h3>写一点心情</h3><p>伸出食指，让指尖划开雾气</p></div></div><div class="step"><span class="step-number">03</span><svg><use href="#i-pinch"/></svg><div><h3>捏合，停在此刻</h3><p>拇指与食指捏合，松开继续</p></div></div><div class="step"><span class="step-number">04</span><svg><use href="#i-camera"/></svg><div><h3>收藏这一秒</h3><p>拍一张照片，把心情留住</p></div></div></section>
+  </main>
+  <footer><span>雾会散去，此刻不会。<i>Mist fades. Moments stay.</i></span><span>MADE FOR A SLOWER MOMENT <span class="footer-star">✳</span></span></footer>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <dialog id="helpDialog" aria-labelledby="helpTitle"><button class="close icon-btn" data-close="helpDialog" aria-label="关闭指南"><svg><use href="#i-close"/></svg></button><div class="eyebrow">A SMALL GUIDE</div><h2 id="helpTitle">跟雾镜打个招呼。</h2><ol class="help-steps"><li><strong>打开镜头</strong><p>点击「开启雾镜」，允许摄像头和麦克风。拒绝麦克风也能写字，点击模拟呼吸即可起雾。</p></li><li><strong>把呼吸变成雾</strong><p>先安静 2 秒完成校准，再靠近麦克风轻轻吹气。强度由声音的音量与频谱估计，不是气流实测；说话、风扇也可能触发，可重新校准和调整灵敏度。</p></li><li><strong>食指写，捏合停</strong><p>让整只手进入镜头，伸直食指开始写字。拇指与食指捏合时抬笔，保持捏合可移动到下一笔起点，松开且伸直食指继续。也可以按暂停，或按住鼠标 / 触屏拖动写字。</p></li><li><strong>拍下此刻</strong><p>照片会保留镜面与笔迹，不含手势光标。预览照片后下载 PNG，不会上传。</p></li></ol><div class="help-tip">建议在明亮环境使用，手离镜头约 30–80 cm。摄像头与麦克风位置可能不同，请朝麦克风哈气。浏览器需要支持摄像头权限；微信内打不开时可在系统浏览器尝试。</div><button class="btn btn-dark" data-close="helpDialog">开始我的小实验 <svg><use href="#i-arrow"/></svg></button></dialog>
+  <dialog id="photoDialog" aria-labelledby="photoTitle"><button class="close icon-btn" data-close="photoDialog" aria-label="关闭照片"><svg><use href="#i-close"/></svg></button><div class="eyebrow">A MOMENT TO KEEP</div><h2 id="photoTitle">此刻，已定格。</h2><img id="photoPreview" alt="刚刚拍下的雾镜照片"><p id="photoCaption"></p><a id="downloadPhoto" class="btn btn-dark" download="mist-moment.png"><svg><use href="#i-save"/></svg> 下载这张照片</a><button class="text-btn" data-close="photoDialog">继续留一点痕迹 ↗</button></dialog>
+  <script type="module" src="./app.js"></script>
+</body></html>
