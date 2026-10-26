@@ -2,7 +2,7 @@
 
 一个能在浏览器中使用的雾镜。摄像头实时镜像，麦克风估计吹气力度，食指擦雾写字，拇指与食指捏合抬笔，支持画笔粗细调节和 PNG 拍照下载。
 
-这是完整独立网站
+这是完整独立网站 https://vhg6zte.github.io/mist-mirror/mist-mirror-github/docs/
 
 ## 使用方法
 
