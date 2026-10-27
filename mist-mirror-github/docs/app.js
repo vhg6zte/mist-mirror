@@ -1,8 +1,10 @@
-import {clamp,coverRect,mapLandmark,classifyHand,audioFeatures,breathTarget,updateFog} from './engine.js';
+import {clamp,coverRect,mapLandmark,classifyHand,audioFeatures,breathTarget,updateFog,smoothTip,updateClearOpacity} from './engine.js?v=mist-fix-2';
 const $ = id => document.getElementById(id);
 const canvas=$('scene'), ctx=canvas.getContext('2d'), video=$('video');
 const layer=document.createElement('canvas'), lctx=layer.getContext('2d');
 const mask=document.createElement('canvas'), mctx=mask.getContext('2d');
+const maskCopy=document.createElement('canvas'), maskCopyCtx=maskCopy.getContext('2d');
+let clearOpacity=1,lastTipTime=0;
 const texture=document.createElement('canvas'), tctx=texture.getContext('2d');
 const backdrop=document.createElement('canvas'), bctx=backdrop.getContext('2d');
 let width=1000,height=650,displayScale=1;
@@ -12,16 +14,23 @@ let fog=.72,breath=0,sensitivity=55,brushSize=24,natural=true,lastBreath=perform
 let worker=null,handModel=null,handReady=false,handBusy=false,handLoading=false,workerTimer=0;
 let lastFrame=-1,lastInference=0,lastHandTime=0,lastFrameTime=performance.now(),lastUI=0;
 let handCursor=null,lastPoint=null,pinched=false,pauseWriting=false,pointerId=null,simulating=false;
-let wasWriting=false,handStable=0,simulationPointer=null,photoURL=null,toastTimer=0,cameraBusy=false,micBusy=false;
+let wasWriting=false,simulationPointer=null,photoURL=null,toastTimer=0,cameraBusy=false,micBusy=false;
 let handGeneration=0,photoCount=0,graphicsUnavailable=false;
 const bars=[];
 for(let i=0;i<31;i++){const bar=document.createElement('i');$('breathBars').append(bar);bars.push(bar);}
 function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),5500);}
 function sliderStyle(el){el.style.setProperty('--range',`${(el.value-el.min)/(el.max-el.min)*100}%`);}
 document.querySelectorAll('input[type=range]').forEach(sliderStyle);
-function stopStroke(){lastPoint=null;wasWriting=false;handStable=0;}
+function stopStroke(){lastPoint=null;wasWriting=false;}
+function clearWriting(){mctx.clearRect(0,0,width,height);clearOpacity=1;}
+function commitClearOpacity(){
+  if(clearOpacity===1)return;
+  maskCopyCtx.clearRect(0,0,width,height);
+  maskCopyCtx.globalAlpha=clearOpacity;maskCopyCtx.drawImage(mask,0,0);maskCopyCtx.globalAlpha=1;
+  mctx.clearRect(0,0,width,height);mctx.drawImage(maskCopy,0,0);clearOpacity=1;
+}
 function setBadge(label,live=false){$('modeBadge').querySelector('span').textContent=label;$('modeBadge').classList.toggle('live',live);}
-function enterDemo(){mode='demo';$('welcome').classList.add('hidden');$('stageHint').classList.remove('hidden');setBadge('体验模式 · 未使用摄像头');$('sourceLabel').textContent='SLOW MOMENT / DEMO';$('gestureStatus').textContent='按住画面，拖动写字';$('sessionState').textContent='体验画面 · 鼠标或触屏均可写字';$('handStatus').textContent='触屏 / 鼠标';$('mirrorStatus').textContent='这是你的空白画布';mctx.clearRect(0,0,width,height);fog=.8;lastBreath=performance.now();toast('按住画面写字；按住「模拟一口呼吸」让雾更浓。');}
+function enterDemo(){mode='demo';$('welcome').classList.add('hidden');$('stageHint').classList.remove('hidden');setBadge('体验模式 · 未使用摄像头');$('sourceLabel').textContent='SLOW MOMENT / DEMO';$('gestureStatus').textContent='按住画面，拖动写字';$('sessionState').textContent='体验画面 · 鼠标或触屏均可写字';$('handStatus').textContent='触屏 / 鼠标';$('mirrorStatus').textContent='这是你的空白画布';clearWriting();fog=.8;lastBreath=performance.now();toast('按住画面写字；按住「模拟一口呼吸」让雾更浓。');}
 function makeBackdrop(){
   bctx.fillStyle='#1e3930';bctx.fillRect(0,0,width,height);
   const light=bctx.createRadialGradient(width*.2,height*.04,0,width*.35,height*.2,width*.8);
@@ -54,7 +63,7 @@ function resize(){
   const old=document.createElement('canvas');old.width=mask.width;old.height=mask.height;old.getContext('2d').drawImage(mask,0,0);
   // Cap resolution for smooth real-time canvas compositing on phones.
   displayScale=Math.min(window.devicePixelRatio||1,1.5,1400/rect.width);width=Math.round(rect.width*displayScale);height=Math.round(rect.height*displayScale);
-  for(const c of [canvas,layer,mask,texture,backdrop]){c.width=width;c.height=height;}
+  for(const c of [canvas,layer,mask,maskCopy,texture,backdrop]){c.width=width;c.height=height;}
   makeBackdrop();makeTexture();if(mode==='welcome')initialLettering();else if(old.width)mctx.drawImage(old,0,0,width,height);stopStroke();handCursor=null;
 }
 new ResizeObserver(resize).observe($('mirror'));
@@ -65,7 +74,7 @@ function drawSource(target){
 function render(target,withCursor=true){
   target.clearRect(0,0,width,height);drawSource(target);
   lctx.clearRect(0,0,width,height);lctx.save();lctx.filter=`blur(${Math.round(13*displayScale)}px)`;drawSource(lctx);lctx.restore();lctx.globalAlpha=.68;lctx.drawImage(texture,0,0);lctx.globalAlpha=1;
-  lctx.globalCompositeOperation='destination-out';lctx.drawImage(mask,0,0);lctx.globalCompositeOperation='source-over';
+  lctx.globalCompositeOperation='destination-out';lctx.globalAlpha=clearOpacity;lctx.drawImage(mask,0,0);lctx.globalAlpha=1;lctx.globalCompositeOperation='source-over';
   target.globalAlpha=fog;target.drawImage(layer,0,0);target.globalAlpha=1;
   // A subtle edge shadow keeps the glass legible without obscuring the reflection.
   const v=target.createRadialGradient(width/2,height*.42,width*.08,width/2,height*.45,Math.max(width,height)*.8);v.addColorStop(0,'#122d2500');v.addColorStop(1,'#102d2438');target.fillStyle=v;target.fillRect(0,0,width,height);
@@ -76,21 +85,33 @@ function drawStroke(point,source){
   if(pauseWriting)return;
   if(point.x<0||point.y<0||point.x>width||point.y>height){lastPoint=null;return;}
   if(lastPoint&&Math.hypot(point.x-lastPoint.x,point.y-lastPoint.y)>Math.min(width,height)*.23)lastPoint=null;
-  const p=source==='hand'&&lastPoint?{x:lastPoint.x+(point.x-lastPoint.x)*.62,y:lastPoint.y+(point.y-lastPoint.y)*.62}:point;
+  // Bake prior refogging before adding a fully clear new segment. Old letters
+  // cannot become clear again just because a new stroke starts.
+  commitClearOpacity();
+  if(fog<.25){fog=.5;lastBreath=performance.now();}
+  const p=point;
   mctx.save();mctx.strokeStyle='#fff';mctx.fillStyle='#fff';mctx.lineWidth=brushSize*displayScale;mctx.lineCap='round';mctx.lineJoin='round';
   if(lastPoint){mctx.beginPath();mctx.moveTo(lastPoint.x,lastPoint.y);mctx.lineTo(p.x,p.y);mctx.stroke();}else{mctx.beginPath();mctx.arc(p.x,p.y,brushSize*displayScale/2,0,Math.PI*2);mctx.fill();}mctx.restore();lastPoint=p;
 }
-function processHand(landmarks){
+function processHand(landmarks,worldLandmarks=null){
   if(!cameraStream)return;
   if(document.querySelector('dialog[open]')){stopStroke();handCursor=null;return;}
-  const result=classifyHand(landmarks,pinched,video.videoWidth/Math.max(1,video.videoHeight));
-  if(!result.present){handCursor=null;pinched=false;stopStroke();$('gestureStatus').textContent=pauseWriting?'已暂停 · 点击播放继续':'伸出食指，让整只手进入镜头';$('handStatus').textContent='等待手势';return;}
-  lastHandTime=performance.now();pinched=result.pinched;const point=mapLandmark(result.point,video.videoWidth,video.videoHeight,width,height);
-  handCursor=handCursor?{x:handCursor.x*.3+point.x*.7,y:handCursor.y*.3+point.y*.7}:point;
-  $('handStatus').textContent=pinched?'捏合 · 抬笔':pauseWriting?'已暂停':result.writing?'食指 · 写字':'调整手势';
-  $('gestureStatus').textContent=pauseWriting?'已暂停 · 点击播放继续':pinched?'已抬笔 · 移动到下一笔起点':result.writing?'正在写字 · 双指捏合抬笔':'伸直食指开始 · 捏合双指抬笔';
-  if(result.writing&&!pauseWriting&&pointerId===null){handStable++;if(handStable>=2){if(!wasWriting)lastPoint=null;drawStroke(handCursor,'hand');wasWriting=true;}}
-  else stopStroke();
+  const now=performance.now();
+  const result=classifyHand(landmarks,pinched,video.videoWidth/Math.max(1,video.videoHeight),{wasWriting,worldLandmarks});
+  if(!result.present){handCursor=null;pinched=false;lastTipTime=0;stopStroke();$('gestureStatus').textContent=pauseWriting?'已暂停 · 点击播放继续':'伸出食指，让整只手进入镜头';$('handStatus').textContent='等待手势';return;}
+  const dt=lastTipTime?(now-lastTipTime)/1000:1/30;lastTipTime=now;
+  if(now-lastHandTime>300){lastPoint=null;handCursor=null;}
+  lastHandTime=now;pinched=result.pinched;
+  const point=mapLandmark(result.point,video.videoWidth,video.videoHeight,width,height);
+  handCursor=smoothTip(handCursor,point,dt);
+  const inFrame=point.x>=0&&point.y>=0&&point.x<=width&&point.y<=height;
+  $('handStatus').textContent=pinched?'捏合 · 抬笔':pauseWriting?'已暂停':!inFrame?'手指在画面外':result.writing?'食指 · 写字':'调整手势';
+  $('gestureStatus').textContent=pauseWriting?'已暂停 · 点击播放继续':!inFrame?'把食指移回镜面显示范围':pinched?'已抬笔 · 移动到下一笔起点':result.writing?'正在写字 · 双指捏合抬笔':'伸直食指开始 · 捏合双指抬笔';
+  // First accepted sample draws immediately. Never interpolate across pen-up.
+  if(result.writing&&inFrame&&!pauseWriting&&pointerId===null){
+    if(!wasWriting)lastPoint=null;
+    drawStroke(handCursor,'hand');wasWriting=true;
+  }else stopStroke();
 }
 async function initHands(){
   if(handLoading||handReady||!cameraStream)return;
@@ -99,7 +120,7 @@ async function initHands(){
   gl.getExtension('WEBGL_lose_context')?.loseContext();graphicsUnavailable=false;
   worker?.terminate();worker=null;handModel?.close();handModel=null;clearTimeout(workerTimer);handBusy=false;
   handLoading=true;$('handStatus').textContent='识别加载中';const generation=++handGeneration;
-  const options={canvas:document.createElement('canvas'),baseOptions:{modelAssetPath:new URL('./vendor/hand_landmarker.task',import.meta.url).href,delegate:'CPU'},runningMode:'VIDEO',numHands:1,minHandDetectionConfidence:.6,minHandPresenceConfidence:.6,minTrackingConfidence:.6};
+  const options={canvas:document.createElement('canvas'),baseOptions:{modelAssetPath:new URL('./vendor/hand_landmarker.task',import.meta.url).href,delegate:'CPU'},runningMode:'VIDEO',numHands:1,minHandDetectionConfidence:.5,minHandPresenceConfidence:.45,minTrackingConfidence:.45};
   async function fallback(){
     worker?.terminate();worker=null;clearTimeout(workerTimer);handBusy=false;handReady=false;handLoading=true;
     if(generation!==handGeneration)return;
@@ -109,13 +130,13 @@ async function initHands(){
   }
   try{
     if(!window.Worker||!window.createImageBitmap)throw new Error('Worker unsupported');
-    worker=new Worker(new URL('./hand-worker.js',import.meta.url));
+    worker=new Worker(new URL('./hand-worker.js?v=mist-fix-2',import.meta.url));
     let failed=false;
     const fail=()=>{if(failed)return;failed=true;fallback();};
     worker.onmessage=({data})=>{
       if(generation!==handGeneration)return;
       if(data.type==='ready'){clearTimeout(workerTimer);handReady=true;handLoading=false;$('handStatus').textContent='等待手势';toast('手势已就绪：伸直食指写字，捏合双指抬笔。');}
-      else if(data.type==='result'){handBusy=false;processHand(data.landmarks);}
+      else if(data.type==='result'){handBusy=false;processHand(data.landmarks,data.worldLandmarks);}
       else if(data.type==='error')fail();
     };
     worker.onerror=fail;workerTimer=setTimeout(fail,25000);worker.postMessage({type:'init'});
@@ -136,7 +157,7 @@ async function startCamera(){
     cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}},audio:false});
     video.srcObject=cameraStream;await video.play();
     mode='live';$('welcome').classList.add('hidden');$('stageHint').classList.remove('hidden');setBadge('镜头已开启 · 实时镜面',true);$('sourceLabel').textContent='LIVE / ON YOUR DEVICE';$('sessionState').textContent='镜头已开启 · 画面仅在本机处理';$('cameraBtn').textContent='关闭摄像头';$('gestureStatus').textContent='正在准备手势识别…';$('mirrorStatus').textContent='指尖划过，心情留下';
-    mctx.clearRect(0,0,width,height);fog=.55;lastBreath=performance.now();stopStroke();initHands();
+    clearWriting();fog=.55;lastBreath=performance.now();stopStroke();initHands();
     cameraStream.getVideoTracks()[0].addEventListener('ended',()=>{if(cameraStream){stopCamera();toast('摄像头已断开，已切换到体验模式。');}});
     return true;
   }catch(error){cameraStream?.getTracks().forEach(t=>t.stop());cameraStream=null;video.srcObject=null;toast(mediaError(error,'摄像头'));return false;}
@@ -169,17 +190,18 @@ function measureBreath(now,dt){
   const smoothing=1-Math.exp(-dt*(target>breath?8:4));breath+=(target-breath)*smoothing;
   if(mode!=='welcome'){
     if(breath>.06){lastBreath=now;
-      // Fresh condensation gradually fills erased letters, instead of abruptly resetting them.
-      mctx.save();mctx.globalCompositeOperation='destination-out';mctx.fillStyle=`rgba(0,0,0,${clamp(breath*dt*.45)})`;mctx.fillRect(0,0,width,height);mctx.restore();
+      // Recondense the transparent letters too, including when fog is at 100%.
+      clearOpacity=updateClearOpacity(clearOpacity,breath,dt);
+      if(clearOpacity<.005){clearWriting();}
     }
     fog=updateFog(fog,breath,dt,natural,(now-lastBreath)/1000);
   }
 }
 async function infer(now){
-  if(!handReady||handBusy||!cameraStream||video.readyState<2||video.currentTime===lastFrame||now-lastInference<65||document.hidden)return;
+  if(!handReady||handBusy||!cameraStream||video.readyState<2||video.currentTime===lastFrame||now-lastInference<(worker?40:66)||document.hidden)return;
   lastFrame=video.currentTime;lastInference=now;handBusy=true;const gen=handGeneration;
-  try{if(worker){const bitmap=await createImageBitmap(video,{resizeWidth:640,resizeHeight:Math.round(640*video.videoHeight/video.videoWidth)});if(!worker||gen!==handGeneration){bitmap.close();handBusy=false;return;}worker.postMessage({type:'frame',bitmap,timestamp:now},[bitmap]);}
-    else if(handModel){processHand(handModel.detectForVideo(video,now).landmarks[0]);handBusy=false;}
+  try{if(worker){const bitmap=await createImageBitmap(video,{resizeWidth:768,resizeHeight:Math.round(768*video.videoHeight/video.videoWidth)});if(!worker||gen!==handGeneration){bitmap.close();handBusy=false;return;}worker.postMessage({type:'frame',bitmap,timestamp:now},[bitmap]);}
+    else if(handModel){const result=handModel.detectForVideo(video,now);processHand(result.landmarks[0],result.worldLandmarks?.[0]);handBusy=false;}
   }catch(error){handBusy=false;if(gen!==handGeneration)return;handReady=false;$('handStatus').textContent='识别中断';$('cameraBtn').textContent='重试手势 ↗';$('gestureStatus').textContent='识别中断 · 仍可鼠标 / 触屏写字';toast('手势识别中断，点击「重试手势」可重新加载。');}
 }
 function updateUI(now){
@@ -189,7 +211,7 @@ function updateUI(now){
   $('breathLabel').textContent=calibrationUntil?'安静 2 秒，正在校准…':simulating?'模拟呼吸 · 雾正在凝结':breath>.48?'深深呼吸，浓雾渐起':breath>.08?'轻轻一口，雾气浮现':micStream?'正在聆听你的呼吸':'等待你的第一口呼吸';
   $('fogValue').textContent=`${Math.round(fog*100)}%`;if(document.activeElement!==$('fogLevel')){$('fogLevel').value=Math.round(fog*100);sliderStyle($('fogLevel'));}
 }
-function frame(now){const dt=Math.min((now-lastFrameTime)/1000,.05);lastFrameTime=now;
+function frame(now){const dt=Math.min((now-lastFrameTime)/1000,.15);lastFrameTime=now;
   if(!document.hidden){measureBreath(now,dt);if(lastHandTime&&now-lastHandTime>400){handCursor=null;if(pointerId===null)stopStroke();}render(ctx);infer(now);updateUI(now);}requestAnimationFrame(frame);
 }
 function pointerPoint(event){const rect=canvas.getBoundingClientRect();return{x:(event.clientX-rect.left)*width/rect.width,y:(event.clientY-rect.top)*height/rect.height};}
@@ -207,8 +229,8 @@ function updateBrush(value){brushSize=+value;$('brushSize').value=value;$('brush
 $('brushSize').addEventListener('input',event=>updateBrush(event.target.value));document.querySelectorAll('[data-size]').forEach(b=>b.addEventListener('click',()=>updateBrush(b.dataset.size)));
 $('fogLevel').addEventListener('input',event=>{if(mode==='welcome')enterDemo();fog=+event.target.value/100;lastBreath=performance.now();sliderStyle(event.target);});
 $('evaporate').addEventListener('change',event=>{natural=event.target.checked;lastBreath=performance.now();});
-$('resetBtn').addEventListener('click',()=>{if(mode==='welcome')enterDemo();mctx.clearRect(0,0,width,height);stopStroke();fog=.85;lastBreath=performance.now();toast('重新覆上一层雾，留给下一个念头。');});
-$('clearBtn').addEventListener('click',()=>{if(mode==='welcome')enterDemo();fog=0;mctx.clearRect(0,0,width,height);stopStroke();toast('镜面已清透，吹一口气再开始。');});
+$('resetBtn').addEventListener('click',()=>{if(mode==='welcome')enterDemo();clearWriting();stopStroke();fog=.85;lastBreath=performance.now();toast('重新覆上一层雾，留给下一个念头。');});
+$('clearBtn').addEventListener('click',()=>{if(mode==='welcome')enterDemo();fog=0;clearWriting();stopStroke();toast('镜面已清透，吹一口气再开始。');});
 $('pauseBtn').addEventListener('click',()=>{pauseWriting=!pauseWriting;stopStroke();$('pauseBtn').setAttribute('aria-pressed',String(pauseWriting));$('pauseBtn').setAttribute('aria-label',pauseWriting?'继续写字':'暂停写字');$('pauseBtn').title=pauseWriting?'继续写字':'暂停写字';$('pauseBtn').innerHTML=`<svg><use href="#i-${pauseWriting?'play':'pause'}"/></svg>`;$('gestureStatus').textContent=pauseWriting?'已暂停 · 点击播放继续':mode==='live'?'伸直食指，继续写字':'按住画面，拖动写字';toast(pauseWriting?'写字已暂停。':'可以继续写字了。');});
 function startSimulation(event){if(event.type==='keydown'&&(![' ','Enter'].includes(event.key)||event.repeat))return;event.preventDefault();if(mode==='welcome')enterDemo();simulating=true;$('breatheBtn').classList.add('pressed');if(event.pointerId!==undefined){simulationPointer=event.pointerId;$('breatheBtn').setPointerCapture(event.pointerId);}}
 function stopSimulation(event){if(event.type==='keyup'&&![' ','Enter'].includes(event.key))return;simulating=false;simulationPointer=null;$('breatheBtn').classList.remove('pressed');}
